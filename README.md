@@ -1,8 +1,9 @@
-# Multi-Agent RAG System
+# RAG From Scratch
 
 A Retrieval-Augmented Generation (RAG) application built from scratch — no RAG
 framework — to learn how retrieval, embeddings, vector search, and grounded
-generation actually work under the hood.
+generation actually work under the hood. It answers questions over your own
+notes and cites the exact chunks each answer is built from.
 
 - **Backend:** FastAPI + Supabase (pgvector) + Gemini (via the OpenAI-compatible endpoint)
 - **Frontend:** Next.js + React + TypeScript + Tailwind CSS
