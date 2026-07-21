@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------
+   Tokens — cool slate ground, warm amber signal.
+   Components style through these, never inside the media query.
+---------------------------------------------------------------- */
+
+:root {
+  --bg: #eef1f3;
+  --surface: #ffffff;
+  --surface-2: #f5f8f9;
+  --ink: #121a1e;
+  --ink-soft: #33424a;
+  --muted: #5f6c73;
+  --line: #d8e0e4;
+  --line-strong: #bfcbd1;
+  --accent: #8a4b00;
+  --accent-ink: #ffffff;
+  --accent-soft: #f6e9d7;
+  --ok: #2f6f4f;
+  --bad: #9a3324;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1316;
+    --surface: #161e23;
+    --surface-2: #1b252b;
+    --ink: #e7ecee;
+    --ink-soft: #c2ced4;
+    --muted: #8d9ca4;
+    --line: #243037;
+    --line-strong: #35454e;
+    --accent: #e9a33c;
+    --accent-ink: #1a1205;
+    --accent-soft: #2a2015;
+    --ok: #6cc296;
+    --bad: #e08a7a;
+  }
+}
+
+/* The toggle must beat the media query in both directions. */
+:root[data-theme="light"] {
+  --bg: #eef1f3;
+  --surface: #ffffff;
+  --surface-2: #f5f8f9;
+  --ink: #121a1e;
+  --ink-soft: #33424a;
+  --muted: #5f6c73;
+  --line: #d8e0e4;
+  --line-strong: #bfcbd1;
+  --accent: #8a4b00;
+  --accent-ink: #ffffff;
+  --accent-soft: #f6e9d7;
+  --ok: #2f6f4f;
+  --bad: #9a3324;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0e1316;
+  --surface: #161e23;
+  --surface-2: #1b252b;
+  --ink: #e7ecee;
+  --ink-soft: #c2ced4;
+  --muted: #8d9ca4;
+  --line: #243037;
+  --line-strong: #35454e;
+  --accent: #e9a33c;
+  --accent-ink: #1a1205;
+  --accent-soft: #2a2015;
+  --ok: #6cc296;
+  --bad: #e08a7a;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-bad: var(--bad);
+
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+html {
+  background: var(--bg);
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-plex-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Mono micro-label for eyebrows and metadata rows. */
+.label {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 240ms ease-out both;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.blink {
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .blink {
+    animation: none;
+  }
+}
