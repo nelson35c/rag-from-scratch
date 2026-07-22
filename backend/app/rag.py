@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 from supabase import create_client
-from chunker import chunk_text
+from app.chunker import chunk_text
 
 load_dotenv()
 
