@@ -101,8 +101,14 @@ def seed(documents):
         )
 
     texts = [c["text"] for c in all_chunks]
-    for chunk, embedding in zip(all_chunks, embed_many(texts)):
+    for chunk, embedding in zip(all_chunks, embed_all(texts)):
         chunk["embedding"] = embedding
 
     supabase.table("rag_chunks").upsert(all_chunks, on_conflict="chunk_id").execute()
     return len(all_chunks)
+
+def embed_all(texts, batch_size=100):
+    embeddings = []
+    for start in range(0, len(texts), batch_size):
+        embeddings.extend(embed_many(texts[start:start + batch_size]))
+    return embeddings
