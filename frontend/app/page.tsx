@@ -18,6 +18,19 @@ type Turn = {
   error?: string;
 };
 
+/** Shape returned by the FastAPI /upload endpoint. */
+type UploadResponse = {
+  filename?: string;
+  base_id?: string;
+  chunks_stored?: number;
+  error?: string;
+};
+
+type UploadStatus = {
+  kind: "ok" | "error";
+  message: string;
+};
+
 type Connection = "checking" | "online" | "offline";
 
 const STARTERS = [
@@ -50,8 +63,12 @@ export default function Home() {
   const [connection, setConnection] = useState<Connection>("checking");
   const [theme, setTheme] = useState<"light" | "dark" | null>(null);
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus | null>(null);
+
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Confirm the backend is reachable before the user types into a dead box.
   useEffect(() => {
@@ -136,6 +153,44 @@ export default function Home() {
     }
   }
 
+  async function uploadFile(file: File) {
+    setUploading(true);
+    setUploadStatus(null);
+
+    const body = new FormData();
+    body.append("file", file);
+
+    try {
+      const response = await fetch(`${API_URL}/upload`, {
+        method: "POST",
+        body, // no Content-Type header — the browser sets the multipart boundary
+      });
+
+      const data: UploadResponse = await response.json();
+
+      if (!response.ok || data.error) {
+        setUploadStatus({
+          kind: "error",
+          message: data.error ?? `Upload failed (${response.status}).`,
+        });
+        return;
+      }
+
+      setUploadStatus({
+        kind: "ok",
+        message: `Indexed ${data.filename} — ${data.chunks_stored} chunks. You can ask about it now.`,
+      });
+    } catch {
+      setUploadStatus({
+        kind: "error",
+        message: "Couldn't reach the API. Is the backend running on port 8000?",
+      });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = ""; // allow re-uploading the same file
+    }
+  }
+
   const statusColor =
     connection === "online"
       ? "bg-ok"
@@ -166,6 +221,25 @@ export default function Home() {
               </span>
             </span>
 
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.txt,.md"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) uploadFile(file);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="cursor-pointer rounded-sm border border-line px-2 py-1 font-mono text-[10px] font-medium tracking-[0.14em] text-muted uppercase transition-colors hover:border-line-strong hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {uploading ? "Indexing…" : "Upload"}
+            </button>
+
             <button
               type="button"
               onClick={toggleTheme}
@@ -175,6 +249,25 @@ export default function Home() {
             </button>
           </div>
         </div>
+
+        {uploadStatus && (
+          <div className="border-t border-line">
+            <div className="mx-auto flex w-full max-w-3xl items-start justify-between gap-4 px-5 py-2.5">
+              <p
+                className={`text-[13px] ${uploadStatus.kind === "ok" ? "text-ok" : "text-bad"}`}
+              >
+                {uploadStatus.message}
+              </p>
+              <button
+                type="button"
+                onClick={() => setUploadStatus(null)}
+                className="label shrink-0 cursor-pointer hover:text-ink"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-5">
@@ -182,8 +275,16 @@ export default function Home() {
           <section className="py-14">
             <p className="label">Start here</p>
             <p className="mt-3 max-w-[46ch] text-[19px] leading-relaxed text-ink-soft">
-              Ask anything covered in your seeded notes. Every answer cites the
-              chunks it was built from.
+              Ask anything covered in your notes. Every answer cites the chunks
+              it was built from — or{" "}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="cursor-pointer text-accent underline underline-offset-4"
+              >
+                upload a document
+              </button>{" "}
+              to add your own.
             </p>
 
             <ul className="mt-7 flex flex-col gap-px overflow-hidden rounded-md border border-line bg-line">
