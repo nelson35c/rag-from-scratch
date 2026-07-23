@@ -1,4 +1,4 @@
-# RAG From Scratch
+# Hybrid Search RAG From Scratch
 
 A Retrieval-Augmented Generation application built from scratch — no RAG
 framework — to understand how retrieval, embeddings, vector search, and grounded
