@@ -4,17 +4,31 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+/** One retrieved candidate chunk, from the /ask "retrieved" array. */
+type RetrievedChunk = {
+  chunk_id: string;
+  source: string;
+  score: number;
+  used: boolean;
+  text: string;
+};
+
 /** Shape returned by the FastAPI /ask endpoint. */
 type AskResponse = {
   answer: string;
   citations: string[];
+  retrieved: RetrievedChunk[];
 };
+
+type RetrievalMode = "hybrid" | "vector";
 
 type Turn = {
   id: number;
   question: string;
+  mode: RetrievalMode;
   answer?: string;
   citations?: string[];
+  retrieved?: RetrievedChunk[];
   error?: string;
 };
 
@@ -65,6 +79,8 @@ export default function Home() {
 
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus | null>(null);
+  const [mode, setMode] = useState<RetrievalMode>("hybrid");
+  const [openInspector, setOpenInspector] = useState<number | null>(null);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -110,7 +126,7 @@ export default function Home() {
     if (!trimmed || busy) return;
 
     const id = Date.now();
-    setTurns((prev) => [...prev, { id, question: trimmed }]);
+    setTurns((prev) => [...prev, { id, question: trimmed, mode }]);
     setDraft("");
     setBusy(true);
 
@@ -118,7 +134,7 @@ export default function Home() {
       const response = await fetch(`${API_URL}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: trimmed }),
+        body: JSON.stringify({ question: trimmed, mode }),
       });
 
       if (!response.ok) {
@@ -129,7 +145,12 @@ export default function Home() {
       setTurns((prev) =>
         prev.map((t) =>
           t.id === id
-            ? { ...t, answer: data.answer, citations: data.citations }
+            ? {
+                ...t,
+                answer: data.answer,
+                citations: data.citations,
+                retrieved: data.retrieved,
+              }
             : t,
         ),
       );
@@ -220,6 +241,23 @@ export default function Home() {
                     : "…"}
               </span>
             </span>
+
+            <div className="flex items-center overflow-hidden rounded-sm border border-line">
+              {(["hybrid", "vector"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`cursor-pointer px-2 py-1 font-mono text-[10px] font-medium tracking-[0.14em] uppercase transition-colors ${
+                    mode === m
+                      ? "bg-accent text-accent-ink"
+                      : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
 
             <input
               ref={fileInputRef}
@@ -334,6 +372,60 @@ export default function Home() {
                           {c}
                         </span>
                       ))}
+                    </div>
+                  )}
+
+                  {turn.retrieved && turn.retrieved.length > 0 && (
+                    <div className="mt-5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenInspector((cur) =>
+                            cur === turn.id ? null : turn.id,
+                          )
+                        }
+                        className="label cursor-pointer hover:text-ink"
+                      >
+                        {openInspector === turn.id ? "▾" : "▸"} Retrieval ·{" "}
+                        {turn.mode} · {turn.retrieved.length} chunks
+                      </button>
+
+                      {openInspector === turn.id && (
+                        <ul className="mt-3 flex flex-col gap-px overflow-hidden rounded-md border border-line bg-line">
+                          {turn.retrieved.map((chunk) => (
+                            <li
+                              key={chunk.chunk_id}
+                              className={`bg-surface px-3 py-2.5 ${
+                                chunk.used ? "" : "opacity-55"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[11px] text-ink">
+                                  {chunk.chunk_id}
+                                </span>
+                                <span
+                                  className="font-mono text-[11px] text-muted tabular-nums"
+                                  title="retrieval score"
+                                >
+                                  {chunk.score.toFixed(4)}
+                                </span>
+                                <span
+                                  className={`ml-auto rounded-sm px-1 py-px font-mono text-[9px] font-medium tracking-[0.12em] uppercase ${
+                                    chunk.used
+                                      ? "bg-accent-soft text-accent"
+                                      : "border border-line text-muted"
+                                  }`}
+                                >
+                                  {chunk.used ? "used" : "dropped"}
+                                </span>
+                              </div>
+                              <p className="mt-1.5 line-clamp-2 text-[12px] leading-snug text-muted">
+                                {chunk.text}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   )}
                 </div>
