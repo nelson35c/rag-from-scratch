@@ -81,8 +81,7 @@ uvicorn app.main:app --reload --port 8000   # run from backend/, note app.main
 `.env` needs: `GEMINI_API_KEY`, `GEMINI_CHAT_MODEL`, `GEMINI_EMBED_MODEL`,
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
-Load the default knowledge base once the server is up: `POST /seed`. Or upload
-your own document from the UI.
+The knowledge base starts empty — see [Adding your own knowledge](#adding-your-own-knowledge) below.
 
 ### 3. Frontend
 
@@ -94,6 +93,15 @@ npm run dev
 ```
 
 Open http://localhost:3000 — ask questions, or use **Upload** to add a document.
+
+## Adding your own knowledge
+
+The knowledge base starts empty. Add content two ways:
+
+- **Upload files** from the UI (or `POST /upload`) — PDF, `.txt`, or `.md`. They
+  are parsed, chunked, embedded, and searchable immediately.
+- **Edit `backend/app/documents.py`** — add entries to `DEFAULT_DOCUMENTS`, each
+  with a `base_id`, `source`, and `text`, then run `POST /seed` to load them.
 
 ## Notes
 
