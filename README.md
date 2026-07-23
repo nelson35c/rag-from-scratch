@@ -9,6 +9,10 @@ questions; every answer cites the exact chunks it was built from.
 - **Frontend:** Next.js + React + TypeScript + Tailwind CSS
 - **Pipeline:** chunk → embed → store → **hybrid retrieve** → augment → generate, with citations
 
+## Demo
+
+![RAG From Scratch — asking a question, then inspecting how hybrid vs. vector retrieval ranked the chunks](docs/demo.gif)
+
 ## Features
 
 - **Hybrid retrieval** — vector similarity *and* Postgres full-text search, fused
