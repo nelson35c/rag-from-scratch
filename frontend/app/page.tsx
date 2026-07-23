@@ -47,13 +47,6 @@ type UploadStatus = {
 
 type Connection = "checking" | "online" | "offline";
 
-const STARTERS = [
-  "Why do I keep getting ModuleNotFoundError after pip install?",
-  "What does overlap do in chunking, and why does it matter?",
-  "Why isn't similarity stored as a column in the table?",
-  "Why does the number 1536 appear in so many places?",
-];
-
 /** Renders [chunk#1] markers inside answer text as real citation chips. */
 function withCitations(text: string): ReactNode[] {
   return text.split(/(\[[^\]\s]+\])/g).map((part, i) => {
@@ -146,11 +139,11 @@ export default function Home() {
         prev.map((t) =>
           t.id === id
             ? {
-                ...t,
-                answer: data.answer,
-                citations: data.citations,
-                retrieved: data.retrieved,
-              }
+              ...t,
+              answer: data.answer,
+              citations: data.citations,
+              retrieved: data.retrieved,
+            }
             : t,
         ),
       );
@@ -160,10 +153,10 @@ export default function Home() {
         prev.map((t) =>
           t.id === id
             ? {
-                ...t,
-                error:
-                  "Couldn't reach the API. Check that uvicorn is running on port 8000, then ask again.",
-              }
+              ...t,
+              error:
+                "Couldn't reach the API. Check that uvicorn is running on port 8000, then ask again.",
+            }
             : t,
         ),
       );
@@ -187,13 +180,23 @@ export default function Home() {
         body, // no Content-Type header — the browser sets the multipart boundary
       });
 
-      const data: UploadResponse = await response.json();
-
-      if (!response.ok || data.error) {
+      // A 500 returns plain text, not JSON — read it as text so parsing can't
+      // throw and mislabel a server error as "couldn't reach the API".
+      if (!response.ok) {
+        const detail = await response.text();
         setUploadStatus({
           kind: "error",
-          message: data.error ?? `Upload failed (${response.status}).`,
+          message:
+            response.status === 500 || detail.includes("RateLimitError")
+              ? "The server hit an error (often a rate limit). Wait a minute and try again."
+              : `Upload failed (${response.status}).`,
         });
+        return;
+      }
+
+      const data: UploadResponse = await response.json();
+      if (data.error) {
+        setUploadStatus({ kind: "error", message: data.error });
         return;
       }
 
@@ -202,6 +205,7 @@ export default function Home() {
         message: `Indexed ${data.filename} — ${data.chunks_stored} chunks. You can ask about it now.`,
       });
     } catch {
+      // Only a genuine network failure reaches here now.
       setUploadStatus({
         kind: "error",
         message: "Couldn't reach the API. Is the backend running on port 8000?",
@@ -248,11 +252,10 @@ export default function Home() {
                   key={m}
                   type="button"
                   onClick={() => setMode(m)}
-                  className={`cursor-pointer px-2 py-1 font-mono text-[10px] font-medium tracking-[0.14em] uppercase transition-colors ${
-                    mode === m
+                  className={`cursor-pointer px-2 py-1 font-mono text-[10px] font-medium tracking-[0.14em] uppercase transition-colors ${mode === m
                       ? "bg-accent text-accent-ink"
                       : "text-muted hover:text-ink"
-                  }`}
+                    }`}
                 >
                   {m}
                 </button>
@@ -324,20 +327,6 @@ export default function Home() {
               </button>{" "}
               to add your own.
             </p>
-
-            <ul className="mt-7 flex flex-col gap-px overflow-hidden rounded-md border border-line bg-line">
-              {STARTERS.map((s) => (
-                <li key={s}>
-                  <button
-                    type="button"
-                    onClick={() => ask(s)}
-                    className="w-full cursor-pointer bg-surface px-4 py-3 text-left text-[14px] text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink"
-                  >
-                    {s}
-                  </button>
-                </li>
-              ))}
-            </ul>
           </section>
         ) : (
           <div className="flex flex-col gap-10 py-10">
@@ -395,9 +384,8 @@ export default function Home() {
                           {turn.retrieved.map((chunk) => (
                             <li
                               key={chunk.chunk_id}
-                              className={`bg-surface px-3 py-2.5 ${
-                                chunk.used ? "" : "opacity-55"
-                              }`}
+                              className={`bg-surface px-3 py-2.5 ${chunk.used ? "" : "opacity-55"
+                                }`}
                             >
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-[11px] text-ink">
@@ -410,11 +398,10 @@ export default function Home() {
                                   {chunk.score.toFixed(4)}
                                 </span>
                                 <span
-                                  className={`ml-auto rounded-sm px-1 py-px font-mono text-[9px] font-medium tracking-[0.12em] uppercase ${
-                                    chunk.used
+                                  className={`ml-auto rounded-sm px-1 py-px font-mono text-[9px] font-medium tracking-[0.12em] uppercase ${chunk.used
                                       ? "bg-accent-soft text-accent"
                                       : "border border-line text-muted"
-                                  }`}
+                                    }`}
                                 >
                                   {chunk.used ? "used" : "dropped"}
                                 </span>
@@ -455,7 +442,7 @@ export default function Home() {
                 ask(draft);
               }
             }}
-            placeholder="Ask about embeddings, chunking, the database…"
+            placeholder="Ask questions about the notes uploaded..."
             className="max-h-40 flex-1 resize-none rounded-md border border-line bg-surface px-3.5 py-2.5 text-[15px] text-ink placeholder:text-muted focus-visible:border-accent"
           />
           <button
