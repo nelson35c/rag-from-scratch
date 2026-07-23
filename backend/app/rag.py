@@ -35,16 +35,26 @@ def embed_many(texts):
     return [item.embedding for item in response.data]
 
 
-def retrieve(question, top_k=8):
-    """Query's supabase to get the chunks"""
+def retrieve(question, top_k=8, mode="hybrid"):
+    """Query's supabase to get the chunks, using hybrid or vector only search"""
     question_vector = embed(question)
+
+    if mode == "vector":
+        results = supabase.rpc("match_chunks", {
+            "query_embedding": question_vector,
+            "match_count": top_k,
+        }).execute()
+        chunks = results.data or []
+        for chunk in chunks:
+            chunk["score"] = chunk.pop("similarity")
+        return chunks
+
     results = supabase.rpc("hybrid_match_chunks", {
         "query_text": question,
         "query_embedding": question_vector,
         "match_count": top_k,
     }).execute()
-    return results.data
-
+    return results.data or []
 
 def pick_best(chunks, limit=4, per_doc=4):
     """Picks the most relevant chunk"""
@@ -60,12 +70,13 @@ def pick_best(chunks, limit=4, per_doc=4):
     return picked
 
 
-def answer(question):
-    chunks = retrieve(question)
+def answer(question, mode="hybrid"):
+    chunks = retrieve(question, mode=mode)
     if not chunks:
-        return {"answer": "I don't have any information to answer that.", "citations": []}
+        return {"answer": "I don't have any information to answer that.", "citations": [], "retrieved": []}
 
     context_chunks = pick_best(chunks)
+    used_ids = {c["chunk_id"] for c in context_chunks}
     context = "\n\n".join(f"[{c['chunk_id']}] {c['text']}" for c in context_chunks)
 
     system_prompt = """You answer questions using ONLY the context provided.
@@ -92,6 +103,16 @@ def answer(question):
     return {
         "answer": response.choices[0].message.content,
         "citations": [c["chunk_id"] for c in context_chunks],
+        "retrieved": [
+            {
+                "chunk_id": c["chunk_id"],
+                "source": c["source"],
+                "score": round(float(c["score"]), 4),
+                "used": c["chunk_id"] in used_ids,
+                "text": c["text"]
+            }
+            for c in chunks
+        ],
     }
 
 

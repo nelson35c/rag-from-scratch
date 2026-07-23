@@ -16,6 +16,7 @@ app.add_middleware(
 
 class AskRequest(BaseModel):
     question: str
+    mode: str = "hybrid"
 
 
 @app.get("/health")
@@ -31,7 +32,7 @@ def seed_endpoint():
 
 @app.post("/ask")
 def ask_endpoint(request: AskRequest):
-    return rag.answer(request.question)
+    return rag.answer(request.question, mode=request.mode)
 
 @app.post("/upload")
 def upload_endpoint(file: UploadFile = File(...)):
