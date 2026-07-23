@@ -35,23 +35,26 @@ def embed_many(texts):
     return [item.embedding for item in response.data]
 
 
-def retrieve(question, top_k=6):
+def retrieve(question, top_k=8):
+    """Query's supabase to get the chunks"""
     question_vector = embed(question)
-    results = supabase.rpc("match_chunks", {
+    results = supabase.rpc("hybrid_match_chunks", {
+        "query_text": question,
         "query_embedding": question_vector,
         "match_count": top_k,
     }).execute()
     return results.data
 
 
-def pick_best(chunks, limit=4):
-    seen = set()
+def pick_best(chunks, limit=4, per_doc=4):
+    """Picks the most relevant chunk"""
+    counts = {}
     picked = []
     for chunk in chunks:
         doc = chunk["chunk_id"].split("#")[0]
-        if doc not in seen:
+        if counts.get(doc, 0) < per_doc:
             picked.append(chunk)
-            seen.add(doc)
+            counts[doc] = counts.get(doc, 0) + 1
         if len(picked) >= limit:
             break
     return picked
@@ -66,17 +69,16 @@ def answer(question):
     context = "\n\n".join(f"[{c['chunk_id']}] {c['text']}" for c in context_chunks)
 
     system_prompt = """You answer questions using ONLY the context provided.
+        Rules:
+        1. Use only facts found in the context. Never invent information.
+        2. After each fact you use, cite its source like [returns#1].
+        3. If the context does not contain the answer, say you don't know.
+        4. Be concise and friendly."""
 
-Rules:
-1. Use only facts found in the context. Never invent information.
-2. After each fact you use, cite its source like [returns#1].
-3. If the context does not contain the answer, say you don't know.
-4. Be concise and friendly."""
+    user_prompt = f"""
+    Context: {context}
 
-    user_prompt = f"""Context:
-{context}
-
-Question: {question}"""
+    Question: {question}"""
 
     response = ai.chat.completions.create(
         model=os.getenv("GEMINI_CHAT_MODEL"),
